@@ -84,5 +84,5 @@ class Trabajo:
         fecha_str = self._fecha_entrega.strftime("%d-%m-%Y") if self._fecha_entrega else "Sin fecha"
         return f"Trabajo(cliente={self.cliente}, trabajo_pendiente={self.trabajo_pendiente}, fecha_entrega={fecha_str})"
 
-c = Trabajo("Andres", "Sublimado","01-01-2001")
+c = Trabajo("Andres", "Sublimado","01-10-2001")
 print(c)
