@@ -86,3 +86,82 @@ class Trabajo:
 
 c = Trabajo("Andres", "Sublimado","01-10-2001")
 print(c)
+
+#########################
+class Inventario:
+    # Lista de productos permitidos
+    PRODUCTOS_VALIDOS = ["playera", "taza", "papel sublimado", "vidrio", "papel impresión"]
+    
+    def __init__(self, producto, cantidad_producto):
+        # Inicializar bandera de producto válido
+        self._producto_valido = False
+        # Usar los setters para validación inicial
+        self.producto = producto
+        self.cantidad_producto = cantidad_producto
+    
+    # Property y setter para producto
+    @property
+    def producto(self):
+        return self._producto
+    
+    @producto.setter
+    def producto(self, valor):
+        try:
+            # Validar que sea un string
+            if not isinstance(valor, str):
+                raise ValueError("El producto debe ser un texto")
+            
+            # Convertir a minúsculas
+            valor_minuscula = valor.lower().strip()
+            
+            # Validar que esté en la lista de productos válidos
+            if valor_minuscula not in self.PRODUCTOS_VALIDOS:
+                raise ValueError(f"El producto '{valor}' no es válido. Productos permitidos: {', '.join(self.PRODUCTOS_VALIDOS)}")
+            
+            # Si pasa todas las validaciones
+            self._producto = valor_minuscula
+            self._producto_valido = True
+            
+        except Exception as e:
+            print(f"Error al asignar producto: {e}")
+            self._producto = ""
+            self._producto_valido = False
+    
+    # Property y setter para cantidad_producto
+    @property
+    def cantidad_producto(self):
+        return self._cantidad_producto
+    
+    @cantidad_producto.setter
+    def cantidad_producto(self, valor):
+        try:
+            # Verificar primero si el producto es válido
+            if not self._producto_valido:
+                raise ValueError("No se puede asignar cantidad porque el producto no es válido")
+            
+            # Validar que sea un número
+            if not isinstance(valor, (int, float)):
+                raise ValueError("La cantidad debe ser un valor numérico")
+            
+            # Validar que no sea negativo
+            if valor < 0:
+                raise ValueError("La cantidad no puede ser negativa")
+            
+            # Validar que no esté vacío (diferente de cero)
+            if valor == 0:
+                raise ValueError("La cantidad no puede ser cero")
+            
+            self._cantidad_producto = valor
+            
+        except Exception as e:
+            print(f"Error al asignar cantidad: {e}")
+            self._cantidad_producto = 0
+    
+    def __str__(self):
+        if self._producto_valido:
+            return f"Inventario(producto={self.producto}, cantidad={self.cantidad_producto})"
+        else:
+            return f"Inventario(producto=inválido, cantidad=no asignada)"
+        
+d = Inventario("taza",-20)  
+print(d)
