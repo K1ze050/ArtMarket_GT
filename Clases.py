@@ -187,16 +187,16 @@ class Mostrar_almacen:
     
     def mostrar(self):
         """Muestra todo el inventario almacenado"""
-        print("\n" + "="*50)
-        print(" "*15 + "INVENTARIO ALMACENADO")
-        print("="*50)
+        print("\n" + "="*10)
+        print(" "*5 + "INVENTARIO ALMACENADO")
+        print("="*10)
         
         if not Inventario.almacen:
             print("  ⚠ El almacén está vacío")
         else:
             print(f"\n  Total de productos diferentes: {len(Inventario.almacen)}")
             print("\n  Productos en stock:")
-            print("  " + "-"*46)
+            print("  " + "-"*12)
             
             for producto, cantidad in Inventario.almacen.items():
                 print(f"    • {producto.capitalize():20} : {cantidad:>6} unidades")
@@ -206,7 +206,7 @@ class Mostrar_almacen:
             print("  " + "-"*46)
             print(f"    TOTAL DE UNIDADES: {total_unidades:>6}")
         
-        print("="*50 + "\n")
+        print("="*10 + "\n")
 
 
 class Buscar_en_almacen:
@@ -218,35 +218,35 @@ class Buscar_en_almacen:
     
     def buscar(self):
         """Busca un producto en el almacén usando Hashing (acceso directo por clave)"""
-        print("\n" + "="*50)
-        print(" "*15 + "BÚSQUEDA EN ALMACÉN")
-        print("="*50)
+        print("\n" + "="*10)
+        print(" "*5 + "BÚSQUEDA EN ALMACÉN")
+        print("="*10)
         
         # Normalizar la búsqueda a minúsculas
         producto_normalizado = self.producto_buscar.lower().strip()
         
-        print(f"\n  🔍 Buscando: '{self.producto_buscar}'")
-        print(f"  📌 Producto normalizado: '{producto_normalizado}'")
-        print(f"  🔑 Usando Hashing (acceso directo por clave)...")
+        print(f"\n  Buscando: '{self.producto_buscar}'")
+        print(f" Producto normalizado: '{producto_normalizado}'")
+        print(f" Usando Hashing (acceso directo por clave)...")
         
         # HASHING: Acceso directo O(1) usando el producto como clave del diccionario
         # El diccionario en Python usa una tabla hash internamente
         if producto_normalizado in Inventario.almacen:
             cantidad = Inventario.almacen[producto_normalizado]
-            print(f"\n  ✅ ¡PRODUCTO ENCONTRADO!")
-            print(f"  📦 Producto: {producto_normalizado.capitalize()}")
-            print(f"  📊 Cantidad en stock: {cantidad} unidades")
+            print(f"\n ¡PRODUCTO ENCONTRADO!")
+            print(f" Producto: {producto_normalizado.capitalize()}")
+            print(f" Cantidad en stock: {cantidad} unidades")
         else:
-            print(f"\n  ❌ PRODUCTO NO ENCONTRADO")
+            print(f"\n PRODUCTO NO ENCONTRADO")
             print(f"  El producto '{self.producto_buscar}' no está en el almacén")
             
             # Sugerencias de productos disponibles
             if Inventario.almacen:
-                print(f"\n  💡 Productos disponibles en almacén:")
+                print(f"\nProductos disponibles en almacén:")
                 for prod in Inventario.almacen.keys():
                     print(f"     - {prod.capitalize()}")
         
-        print("="*50 + "\n")
+        print("="*10 + "\n")
     
     def obtener_cantidad(self):
         """Retorna la cantidad del producto buscado (si existe)"""
@@ -259,19 +259,19 @@ def menu_principal():
     """Menú interactivo para usar todas las clases del sistema"""
     
     while True:
-        print("\n" + "="*60)
+        print("\n" + "="*10)
         print(" "*15 + "SISTEMA DE GESTIÓN")
-        print("="*60)
+        print("="*10)
         print("\n  Seleccione una opción:\n")
         print("  1. Registrar un trabajo")
         print("  2. Agregar producto al inventario")
         print("  3. Mostrar almacén completo")
         print("  4. Buscar producto en almacén")
         print("  5. Salir del programa")
-        print("\n" + "="*60)
+        print("\n" + "="*10)
         
         try:
-            opcion = input("\n  👉 Ingrese su opción (1-5): ").strip()
+            opcion = input("\n Ingrese su opción (1-5): ").strip()
             
             if opcion == "1":
                 registrar_trabajo()
@@ -282,18 +282,18 @@ def menu_principal():
             elif opcion == "4":
                 buscar_producto()
             elif opcion == "5":
-                print("\n" + "="*60)
-                print(" "*15 + "¡Hasta luego! 👋")
-                print("="*60 + "\n")
+                print("\n" + "="*10)
+                print(" "*5 + "Gracias por tu uso")
+                print("="*10 + "\n")
                 break
             else:
                 print("\n  ❌ Opción inválida. Por favor ingrese un número del 1 al 5.")
                 input("\n  Presione ENTER para continuar...")
         
         except KeyboardInterrupt:
-            print("\n\n" + "="*60)
-            print(" "*10 + "Programa interrumpido por el usuario")
-            print("="*60 + "\n")
+            print("\n\n" + "="*10)
+            print(" "*5 + "Programa interrumpido por el usuario")
+            print("="*10 + "\n")
             break
         except Exception as e:
             print(f"\n  ❌ Error inesperado: {e}")
@@ -302,9 +302,9 @@ def menu_principal():
 
 def registrar_trabajo():
     """Función para registrar un nuevo trabajo"""
-    print("\n" + "-"*60)
-    print(" "*18 + "REGISTRAR TRABAJO")
-    print("-"*60)
+    print("\n" + "-"*10)
+    print(" "*15 + "REGISTRAR TRABAJO")
+    print("-"*10)
     
     try:
         cliente = input("\n  Ingrese el nombre del cliente: ")
@@ -318,7 +318,7 @@ def registrar_trabajo():
         trabajo.imprimir_fecha()
         
     except Exception as e:
-        print(f"\n  ❌ Error al registrar trabajo: {e}")
+        print(f"\n Error al registrar trabajo: {e}")
     
     input("\n  Presione ENTER para volver al menú...")
 
@@ -341,36 +341,35 @@ def agregar_inventario():
         try:
             cantidad = float(cantidad)
         except ValueError:
-            print("\n  ❌ La cantidad debe ser un número válido")
-            input("\n  Presione ENTER para volver al menú...")
+            print("\n La cantidad debe ser un número válido")
+            input("\n Presione ENTER para volver al menú...")
             return
         
         inventario = Inventario(producto=producto, cantidad_producto=cantidad)
         
     except Exception as e:
-        print(f"\n  ❌ Error al agregar inventario: {e}")
+        print(f"\nError al agregar inventario: {e}")
     
     input("\n  Presione ENTER para volver al menú...")
 
 
 def buscar_producto():
     """Función para buscar un producto en el almacén"""
-    print("\n" + "-"*60)
+    print("\n" + "-"*10)
     print(" "*17 + "BUSCAR PRODUCTO")
-    print("-"*60)
+    print("-"*10)
     
     try:
         producto = input("\n  Ingrese el nombre del producto a buscar: ")
         
         if producto.strip() == "":
-            print("\n  ❌ Debe ingresar un nombre de producto")
+            print("\nDebe ingresar un nombre de producto")
         else:
             Buscar_en_almacen(producto)
         
     except Exception as e:
-        print(f"\n  ❌ Error al buscar producto: {e}")
+        print(f"\nError al buscar producto: {e}")
     
     input("\n  Presione ENTER para volver al menú...")
 
-d = Inventario("taza",-20)  
-print(d)
+menu_principal()
