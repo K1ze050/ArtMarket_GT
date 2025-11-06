@@ -1,11 +1,45 @@
 from datetime import datetime
+from openpyxl import Workbook, load_workbook
+import os
+
+# Configuración de archivos Excel
+# Obtener la ruta del escritorio del usuario
+ESCRITORIO = os.path.join(os.path.expanduser("~"), "Desktop")
+ARCHIVO_EXCEL = os.path.join(ESCRITORIO, "base_datos.xlsx")
+HOJA_INVENTARIO = "Inventario"
+HOJA_TRABAJOS = "Trabajos"
+
+
+def inicializar_excel():
+    """Crea el archivo Excel y las hojas si no existen"""
+    if not os.path.exists(ARCHIVO_EXCEL):
+        wb = Workbook()
+        
+        # Crear hoja de Inventario
+        ws_inventario = wb.active
+        ws_inventario.title = HOJA_INVENTARIO
+        ws_inventario.append(["Producto", "Cantidad"])
+        
+        # Crear hoja de Trabajos
+        ws_trabajos = wb.create_sheet(HOJA_TRABAJOS)
+        ws_trabajos.append(["Cliente", "Trabajo_Pendiente", "Fecha_Entrega"])
+        
+        wb.save(ARCHIVO_EXCEL)
+        print(f"Archivo creado exitosamente en: {ARCHIVO_EXCEL}")
+    else:
+        print(f"Archivo ya existe en: {ARCHIVO_EXCEL}")
+
 
 class Trabajo:
+    # Lista de trabajos permitidos
+    TRABAJOS_VALIDOS = ["corte eléctrico en vinil adhesivo", "sublimado"]
+    
     def __init__(self, cliente, trabajo_pendiente, fecha_entrega):
         # Usar los setters para validación inicial
         self.cliente = cliente
         self.trabajo_pendiente = trabajo_pendiente
         self.fecha_entrega = fecha_entrega
+        self.materiales_descontados = False
     
     # Property y setter para cliente (dato textual)
     @property
@@ -34,9 +68,18 @@ class Trabajo:
         try:
             if not isinstance(valor, str):
                 raise ValueError("El trabajo pendiente debe ser un texto")
-            if len(valor.strip()) == 0:
+            
+            # Convertir a minúsculas
+            valor_minuscula = valor.lower().strip()
+            
+            if len(valor_minuscula) == 0:
                 raise ValueError("El trabajo pendiente no puede estar vacío")
-            self._trabajo_pendiente = valor
+            
+            # Validar que esté en la lista de trabajos válidos
+            if valor_minuscula not in self.TRABAJOS_VALIDOS:
+                raise ValueError(f"El trabajo '{valor}' no es válido. Trabajos permitidos: {', '.join(self.TRABAJOS_VALIDOS)}")
+            
+            self._trabajo_pendiente = valor_minuscula
         except Exception as e:
             print(f"Error al asignar trabajo pendiente: {e}")
             self._trabajo_pendiente = ""
@@ -73,6 +116,193 @@ class Trabajo:
             print(f"Error inesperado al asignar fecha: {e}")
             self._fecha_entrega = None
     
+    def descontar_materiales(self):
+        """Descuenta materiales del inventario según el tipo de trabajo"""
+        if not self._trabajo_pendiente:
+            print("No se puede descontar materiales: trabajo no válido")
+            return False
+        
+        if self._trabajo_pendiente == "corte eléctrico en vinil adhesivo":
+            return self._descontar_vinil()
+        elif self._trabajo_pendiente == "sublimado":
+            return self._descontar_sublimado()
+        
+        return False
+    
+    def _descontar_vinil(self):
+        """Descuenta vinil del inventario"""
+        try:
+            cantidad_hojas = input("\nIngrese la cantidad de hojas de vinil a usar: ")
+            
+            try:
+                cantidad_hojas = float(cantidad_hojas)
+            except ValueError:
+                print("La cantidad debe ser un número válido")
+                return False
+            
+            if cantidad_hojas < 0:
+                print("No se permiten valores negativos")
+                return False
+            
+            if cantidad_hojas == 0:
+                print("La cantidad debe ser mayor a cero")
+                return False
+            
+            # Verificar disponibilidad en Excel
+            wb = load_workbook(ARCHIVO_EXCEL)
+            ws = wb[HOJA_INVENTARIO]
+            
+            vinil_disponible = 0
+            fila_vinil = None
+            
+            for row in range(2, ws.max_row + 1):
+                producto = ws.cell(row, 1).value
+                if producto and producto.lower() == "vinil":
+                    vinil_disponible = ws.cell(row, 2).value or 0
+                    fila_vinil = row
+                    break
+            
+            if fila_vinil is None:
+                print("El producto vinil no se encuentra en el inventario")
+                return False
+            
+            if vinil_disponible < cantidad_hojas:
+                print(f"La cantidad ingresada excede los materiales disponibles")
+                print(f"Vinil disponible: {vinil_disponible}, solicitado: {cantidad_hojas}")
+                return False
+            
+            # Descontar del inventario
+            nueva_cantidad = vinil_disponible - cantidad_hojas
+            ws.cell(fila_vinil, 2, nueva_cantidad)
+            wb.save(ARCHIVO_EXCEL)
+            
+            print(f"Materiales descontados exitosamente")
+            print(f"Vinil: {cantidad_hojas} hojas descontadas")
+            print(f"Vinil restante: {nueva_cantidad}")
+            
+            self.materiales_descontados = True
+            return True
+            
+        except Exception as e:
+            print(f"Error al descontar vinil: {e}")
+            return False
+    
+    def _descontar_sublimado(self):
+        """Descuenta materiales para sublimado del inventario"""
+        try:
+            print("\nProductos disponibles para sublimado:")
+            print("1. Playera")
+            print("2. Taza")
+            print("3. Vidrio")
+            
+            opcion = input("\nSeleccione el producto (1-3): ").strip()
+            
+            productos_sublimado = {
+                "1": "playera",
+                "2": "taza",
+                "3": "vidrio"
+            }
+            
+            if opcion not in productos_sublimado:
+                print("Opción inválida")
+                return False
+            
+            producto_elegido = productos_sublimado[opcion]
+            
+            cantidad = input(f"\nIngrese la cantidad de {producto_elegido}s: ")
+            
+            try:
+                cantidad = float(cantidad)
+            except ValueError:
+                print("La cantidad debe ser un número válido")
+                return False
+            
+            if cantidad < 0:
+                print("No se permiten valores negativos")
+                return False
+            
+            if cantidad == 0:
+                print("La cantidad debe ser mayor a cero")
+                return False
+            
+            # Verificar disponibilidad en Excel
+            wb = load_workbook(ARCHIVO_EXCEL)
+            ws = wb[HOJA_INVENTARIO]
+            
+            producto_disponible = 0
+            papel_disponible = 0
+            fila_producto = None
+            fila_papel = None
+            
+            for row in range(2, ws.max_row + 1):
+                producto = ws.cell(row, 1).value
+                if producto:
+                    if producto.lower() == producto_elegido:
+                        producto_disponible = ws.cell(row, 2).value or 0
+                        fila_producto = row
+                    elif producto.lower() == "papel impresión":
+                        papel_disponible = ws.cell(row, 2).value or 0
+                        fila_papel = row
+            
+            if fila_producto is None:
+                print(f"El producto {producto_elegido} no se encuentra en el inventario")
+                return False
+            
+            if fila_papel is None:
+                print("El papel impresión no se encuentra en el inventario")
+                return False
+            
+            if producto_disponible < cantidad:
+                print(f"La cantidad ingresada excede los materiales disponibles")
+                print(f"{producto_elegido.capitalize()} disponible: {producto_disponible}, solicitado: {cantidad}")
+                return False
+            
+            if papel_disponible < cantidad:
+                print(f"La cantidad ingresada excede los materiales disponibles")
+                print(f"Papel impresión disponible: {papel_disponible}, solicitado: {cantidad}")
+                return False
+            
+            # Descontar del inventario
+            nueva_cantidad_producto = producto_disponible - cantidad
+            nueva_cantidad_papel = papel_disponible - cantidad
+            
+            ws.cell(fila_producto, 2, nueva_cantidad_producto)
+            ws.cell(fila_papel, 2, nueva_cantidad_papel)
+            wb.save(ARCHIVO_EXCEL)
+            
+            print(f"Materiales descontados exitosamente")
+            print(f"{producto_elegido.capitalize()}: {cantidad} unidades descontadas")
+            print(f"{producto_elegido.capitalize()} restante: {nueva_cantidad_producto}")
+            print(f"Papel impresión: {cantidad} hojas descontadas")
+            print(f"Papel impresión restante: {nueva_cantidad_papel}")
+            
+            self.materiales_descontados = True
+            return True
+            
+        except Exception as e:
+            print(f"Error al descontar materiales de sublimado: {e}")
+            return False
+    
+    def guardar_en_excel(self):
+        """Guarda el trabajo en Excel"""
+        try:
+            if self._cliente and self._trabajo_pendiente and self._fecha_entrega:
+                wb = load_workbook(ARCHIVO_EXCEL)
+                ws = wb[HOJA_TRABAJOS]
+                
+                fecha_str = self._fecha_entrega.strftime("%d-%m-%Y")
+                ws.append([self._cliente, self._trabajo_pendiente, fecha_str])
+                
+                wb.save(ARCHIVO_EXCEL)
+                print(f"Trabajo guardado en Excel exitosamente")
+                return True
+            else:
+                print("No se puede guardar: datos inválidos")
+                return False
+        except Exception as e:
+            print(f"Error al guardar en Excel: {e}")
+            return False
+    
     def imprimir_fecha(self):
         """Imprime la fecha de entrega en formato dd-mm-yyyy"""
         if self._fecha_entrega:
@@ -87,10 +317,7 @@ class Trabajo:
 
 class Inventario:
     # Lista de productos permitidos
-    PRODUCTOS_VALIDOS = ["playera", "taza", "papel sublimado", "vidrio", "papel impresión"]
-    
-    # Almacenamiento de inventario (diccionario con producto como clave y cantidad como valor)
-    almacen = {}
+    PRODUCTOS_VALIDOS = ["playera", "taza", "papel sublimado", "vidrio", "papel impresión", "vinil"]
     
     def __init__(self, producto, cantidad_producto):
         # Inicializar bandera de producto válido
@@ -153,24 +380,39 @@ class Inventario:
             
             self._cantidad_producto = valor
             
-            # GUARDAR EN EL ALMACÉN si todo es válido
-            self._guardar_en_almacen()
+            # GUARDAR EN EXCEL si todo es válido
+            self._guardar_en_excel()
             
         except Exception as e:
             print(f"Error al asignar cantidad: {e}")
             self._cantidad_producto = 0
     
-    def _guardar_en_almacen(self):
-        """Método privado para guardar el producto y cantidad en el almacén"""
-        if self._producto_valido and self._cantidad_producto > 0:
-            # Si el producto ya existe, sumar la cantidad
-            if self._producto in Inventario.almacen:
-                Inventario.almacen[self._producto] += self._cantidad_producto
-                print(f"✓ Producto '{self._producto}' actualizado en almacén. Nueva cantidad: {Inventario.almacen[self._producto]}")
-            else:
-                # Si es nuevo, agregarlo al almacén
-                Inventario.almacen[self._producto] = self._cantidad_producto
-                print(f"✓ Producto '{self._producto}' agregado al almacén con cantidad: {self._cantidad_producto}")
+    def _guardar_en_excel(self):
+        """Método privado para guardar el producto y cantidad en Excel"""
+        try:
+            if self._producto_valido and self._cantidad_producto > 0:
+                wb = load_workbook(ARCHIVO_EXCEL)
+                ws = wb[HOJA_INVENTARIO]
+                
+                # Buscar si el producto ya existe
+                producto_encontrado = False
+                for row in range(2, ws.max_row + 1):
+                    if ws.cell(row, 1).value and ws.cell(row, 1).value.lower() == self._producto:
+                        # Sumar la cantidad al producto existente
+                        cantidad_actual = ws.cell(row, 2).value or 0
+                        ws.cell(row, 2, cantidad_actual + self._cantidad_producto)
+                        producto_encontrado = True
+                        print(f"Producto {self._producto} actualizado en Excel. Nueva cantidad: {cantidad_actual + self._cantidad_producto}")
+                        break
+                
+                # Si no existe, agregarlo
+                if not producto_encontrado:
+                    ws.append([self._producto, self._cantidad_producto])
+                    print(f"Producto {self._producto} agregado a Excel con cantidad: {self._cantidad_producto}")
+                
+                wb.save(ARCHIVO_EXCEL)
+        except Exception as e:
+            print(f"Error al guardar en Excel: {e}")
     
     def __str__(self):
         if self._producto_valido:
@@ -180,98 +422,134 @@ class Inventario:
 
 
 class Mostrar_almacen:
-    """Clase para mostrar el inventario almacenado"""
+    """Clase para mostrar el inventario almacenado desde Excel"""
     
     def __init__(self):
         self.mostrar()
     
     def mostrar(self):
-        """Muestra todo el inventario almacenado"""
-        print("\n" + "="*10)
-        print(" "*5 + "INVENTARIO ALMACENADO")
-        print("="*10)
-        
-        if not Inventario.almacen:
-            print("  ⚠ El almacén está vacío")
-        else:
-            print(f"\n  Total de productos diferentes: {len(Inventario.almacen)}")
-            print("\n  Productos en stock:")
-            print("  " + "-"*12)
+        """Muestra todo el inventario almacenado en Excel"""
+        try:
+            wb = load_workbook(ARCHIVO_EXCEL)
+            ws = wb[HOJA_INVENTARIO]
             
-            for producto, cantidad in Inventario.almacen.items():
-                print(f"    • {producto.capitalize():20} : {cantidad:>6} unidades")
+            print("\nINVENTARIO ALMACENADO")
             
-            # Calcular total de unidades
-            total_unidades = sum(Inventario.almacen.values())
-            print("  " + "-"*46)
-            print(f"    TOTAL DE UNIDADES: {total_unidades:>6}")
-        
-        print("="*10 + "\n")
+            # Contar productos (excluyendo encabezado)
+            total_productos = ws.max_row - 1
+            
+            if total_productos == 0:
+                print("El almacén está vacío")
+            else:
+                print(f"\nTotal de productos diferentes: {total_productos}")
+                print("\nProductos en stock:")
+                
+                total_unidades = 0
+                for row in range(2, ws.max_row + 1):
+                    producto = ws.cell(row, 1).value
+                    cantidad = ws.cell(row, 2).value or 0
+                    
+                    if producto:
+                        print(f"{producto.capitalize()}: {cantidad} unidades")
+                        total_unidades += cantidad
+                
+                print(f"\nTOTAL DE UNIDADES: {total_unidades}")
+            
+            print("")
+            
+        except Exception as e:
+            print(f"Error al mostrar almacén: {e}")
 
 
 class Buscar_en_almacen:
-    """Clase para buscar productos en el almacén usando Hashing"""
+    """Clase para buscar productos en el almacén usando Hashing desde Excel"""
     
     def __init__(self, producto_buscar):
         self.producto_buscar = producto_buscar
         self.buscar()
     
     def buscar(self):
-        """Busca un producto en el almacén usando Hashing (acceso directo por clave)"""
-        print("\n" + "="*10)
-        print(" "*5 + "BÚSQUEDA EN ALMACÉN")
-        print("="*10)
-        
-        # Normalizar la búsqueda a minúsculas
-        producto_normalizado = self.producto_buscar.lower().strip()
-        
-        print(f"\n  Buscando: '{self.producto_buscar}'")
-        print(f" Producto normalizado: '{producto_normalizado}'")
-        print(f" Usando Hashing (acceso directo por clave)...")
-        
-        # HASHING: Acceso directo O(1) usando el producto como clave del diccionario
-        # El diccionario en Python usa una tabla hash internamente
-        if producto_normalizado in Inventario.almacen:
-            cantidad = Inventario.almacen[producto_normalizado]
-            print(f"\n ¡PRODUCTO ENCONTRADO!")
-            print(f" Producto: {producto_normalizado.capitalize()}")
-            print(f" Cantidad en stock: {cantidad} unidades")
-        else:
-            print(f"\n PRODUCTO NO ENCONTRADO")
-            print(f"  El producto '{self.producto_buscar}' no está en el almacén")
+        """Busca un producto en el almacén de Excel usando Hashing"""
+        try:
+            wb = load_workbook(ARCHIVO_EXCEL)
+            ws = wb[HOJA_INVENTARIO]
             
-            # Sugerencias de productos disponibles
-            if Inventario.almacen:
-                print(f"\nProductos disponibles en almacén:")
-                for prod in Inventario.almacen.keys():
-                    print(f"     - {prod.capitalize()}")
-        
-        print("="*10 + "\n")
+            print("\nBUSQUEDA EN ALMACEN")
+            
+            # Normalizar la búsqueda a minúsculas
+            producto_normalizado = self.producto_buscar.lower().strip()
+            
+            print(f"\nBuscando: {self.producto_buscar}")
+            print(f"Producto normalizado: {producto_normalizado}")
+            print(f"Usando Hashing (búsqueda en Excel)...")
+            
+            # Crear diccionario (hash table) temporal desde Excel
+            inventario_hash = {}
+            for row in range(2, ws.max_row + 1):
+                producto = ws.cell(row, 1).value
+                cantidad = ws.cell(row, 2).value
+                if producto:
+                    inventario_hash[producto.lower()] = cantidad
+            
+            # HASHING: Acceso directo O(1)
+            if producto_normalizado in inventario_hash:
+                cantidad = inventario_hash[producto_normalizado]
+                print(f"\nPRODUCTO ENCONTRADO")
+                print(f"Producto: {producto_normalizado.capitalize()}")
+                print(f"Cantidad en stock: {cantidad} unidades")
+            else:
+                print(f"\nPRODUCTO NO ENCONTRADO")
+                print(f"El producto {self.producto_buscar} no está en el almacén")
+                
+                # Sugerencias de productos disponibles
+                if inventario_hash:
+                    print(f"\nProductos disponibles en almacén:")
+                    for prod in inventario_hash.keys():
+                        print(f"{prod.capitalize()}")
+            
+            print("")
+            
+        except Exception as e:
+            print(f"Error al buscar en almacén: {e}")
     
     def obtener_cantidad(self):
         """Retorna la cantidad del producto buscado (si existe)"""
-        producto_normalizado = self.producto_buscar.lower().strip()
-        return Inventario.almacen.get(producto_normalizado, 0)
+        try:
+            wb = load_workbook(ARCHIVO_EXCEL)
+            ws = wb[HOJA_INVENTARIO]
+            
+            producto_normalizado = self.producto_buscar.lower().strip()
+            
+            for row in range(2, ws.max_row + 1):
+                producto = ws.cell(row, 1).value
+                if producto and producto.lower() == producto_normalizado:
+                    return ws.cell(row, 2).value or 0
+            
+            return 0
+        except Exception as e:
+            print(f"Error al obtener cantidad: {e}")
+            return 0
 
 
 # Menú principal del sistema
 def menu_principal():
     """Menú interactivo para usar todas las clases del sistema"""
     
+    # Inicializar archivo Excel al inicio
+    inicializar_excel()
+    
     while True:
-        print("\n" + "="*10)
-        print(" "*15 + "SISTEMA DE GESTIÓN")
-        print("="*10)
-        print("\n  Seleccione una opción:\n")
-        print("  1. Registrar un trabajo")
-        print("  2. Agregar producto al inventario")
-        print("  3. Mostrar almacén completo")
-        print("  4. Buscar producto en almacén")
-        print("  5. Salir del programa")
-        print("\n" + "="*10)
+        print("\nSISTEMA DE GESTION")
+        print("\nSeleccione una opción:\n")
+        print("1. Registrar un trabajo")
+        print("2. Agregar producto al inventario")
+        print("3. Mostrar almacén completo")
+        print("4. Buscar producto en almacén")
+        print("5. Ver trabajos registrados")
+        print("6. Salir del programa")
         
         try:
-            opcion = input("\n Ingrese su opción (1-5): ").strip()
+            opcion = input("\nIngrese su opción (1-6): ").strip()
             
             if opcion == "1":
                 registrar_trabajo()
@@ -282,67 +560,78 @@ def menu_principal():
             elif opcion == "4":
                 buscar_producto()
             elif opcion == "5":
-                print("\n" + "="*10)
-                print(" "*5 + "Gracias por tu uso")
-                print("="*10 + "\n")
+                ver_trabajos()
+            elif opcion == "6":
+                print("\nHasta luego\n")
                 break
             else:
-                print("\n  ❌ Opción inválida. Por favor ingrese un número del 1 al 5.")
-                input("\n  Presione ENTER para continuar...")
+                print("\nOpción inválida. Por favor ingrese un número del 1 al 6.")
+                input("\nPresione ENTER para continuar...")
         
         except KeyboardInterrupt:
-            print("\n\n" + "="*10)
-            print(" "*5 + "Programa interrumpido por el usuario")
-            print("="*10 + "\n")
+            print("\n\nPrograma interrumpido por el usuario\n")
             break
         except Exception as e:
-            print(f"\n  ❌ Error inesperado: {e}")
-            input("\n  Presione ENTER para continuar...")
+            print(f"\nError inesperado: {e}")
+            input("\nPresione ENTER para continuar...")
 
 
 def registrar_trabajo():
     """Función para registrar un nuevo trabajo"""
-    print("\n" + "-"*10)
-    print(" "*15 + "REGISTRAR TRABAJO")
-    print("-"*10)
+    print("\nREGISTRAR TRABAJO")
+    
+    print("\nTrabajos válidos:")
+    for i, trab in enumerate(Trabajo.TRABAJOS_VALIDOS, 1):
+        print(f"{i}. {trab.capitalize()}")
     
     try:
-        cliente = input("\n  Ingrese el nombre del cliente: ")
-        trabajo_pendiente = input("  Ingrese el trabajo pendiente: ")
-        fecha_entrega = input("  Ingrese la fecha de entrega (dd-mm-yyyy): ")
+        cliente = input("\nIngrese el nombre del cliente: ")
+        trabajo_pendiente = input("Ingrese el tipo de trabajo: ")
+        fecha_entrega = input("Ingrese la fecha de entrega (dd-mm-yyyy): ")
         
         trabajo = Trabajo(cliente=cliente, trabajo_pendiente=trabajo_pendiente, fecha_entrega=fecha_entrega)
         
-        print("\n  ✅ Trabajo registrado exitosamente:")
-        print(f"  {trabajo}")
+        if not trabajo._trabajo_pendiente:
+            print("\nNo se puede continuar sin un trabajo válido")
+            input("\nPresione ENTER para volver al menú...")
+            return
+        
+        print("\nTrabajo registrado:")
+        print(f"{trabajo}")
         trabajo.imprimir_fecha()
         
+        # Descontar materiales
+        print("\nProcediendo a descontar materiales del inventario...")
+        if trabajo.descontar_materiales():
+            # Solo guardar en Excel si se descontaron los materiales exitosamente
+            trabajo.guardar_en_excel()
+        else:
+            print("\nEl trabajo no se guardará porque no se pudieron descontar los materiales")
+        
     except Exception as e:
-        print(f"\n Error al registrar trabajo: {e}")
+        print(f"\nError al registrar trabajo: {e}")
     
-    input("\n  Presione ENTER para volver al menú...")
+    input("\nPresione ENTER para volver al menú...")
 
 
 def agregar_inventario():
     """Función para agregar productos al inventario"""
-    print("\n" + "-"*60)
-    print(" "*15 + "AGREGAR AL INVENTARIO")
-    print("-"*60)
+    print("\nAGREGAR AL INVENTARIO")
     
-    print("\n  Productos válidos:")
+    print("\nProductos válidos:")
     for i, prod in enumerate(Inventario.PRODUCTOS_VALIDOS, 1):
-        print(f"    {i}. {prod.capitalize()}")
+        print(f"{i}. {prod.capitalize()}")
     
     try:
-        producto = input("\n  Ingrese el nombre del producto: ")
-        cantidad = input("  Ingrese la cantidad: ")
+        producto = input("\nIngrese el nombre del producto: ")
+        cantidad = input("Ingrese la cantidad: ")
         
         # Intentar convertir la cantidad a número
         try:
             cantidad = float(cantidad)
         except ValueError:
-            print("\n La cantidad debe ser un número válido")
-            input("\n Presione ENTER para volver al menú...")
+            print("\nLa cantidad debe ser un número válido")
+            input("\nPresione ENTER para volver al menú...")
             return
         
         inventario = Inventario(producto=producto, cantidad_producto=cantidad)
@@ -350,17 +639,15 @@ def agregar_inventario():
     except Exception as e:
         print(f"\nError al agregar inventario: {e}")
     
-    input("\n  Presione ENTER para volver al menú...")
+    input("\nPresione ENTER para volver al menú...")
 
 
 def buscar_producto():
     """Función para buscar un producto en el almacén"""
-    print("\n" + "-"*10)
-    print(" "*17 + "BUSCAR PRODUCTO")
-    print("-"*10)
+    print("\nBUSCAR PRODUCTO")
     
     try:
-        producto = input("\n  Ingrese el nombre del producto a buscar: ")
+        producto = input("\nIngrese el nombre del producto a buscar: ")
         
         if producto.strip() == "":
             print("\nDebe ingresar un nombre de producto")
@@ -370,6 +657,36 @@ def buscar_producto():
     except Exception as e:
         print(f"\nError al buscar producto: {e}")
     
-    input("\n  Presione ENTER para volver al menú...")
+    input("\nPresione ENTER para volver al menú...")
+
+
+def ver_trabajos():
+    """Función para ver todos los trabajos registrados"""
+    print("\nTRABAJOS REGISTRADOS")
+    
+    try:
+        wb = load_workbook(ARCHIVO_EXCEL)
+        ws = wb[HOJA_TRABAJOS]
+        
+        total_trabajos = ws.max_row - 1
+        
+        if total_trabajos == 0:
+            print("\nNo hay trabajos registrados")
+        else:
+            print(f"\nTotal de trabajos: {total_trabajos}\n")
+            
+            for row in range(2, ws.max_row + 1):
+                cliente = ws.cell(row, 1).value
+                trabajo = ws.cell(row, 2).value
+                fecha = ws.cell(row, 3).value
+                
+                print(f"{row-1}. Cliente: {cliente}")
+                print(f"   Trabajo: {trabajo}")
+                print(f"   Fecha: {fecha}\n")
+        
+    except Exception as e:
+        print(f"\nError al mostrar trabajos: {e}")
+    
+    input("\nPresione ENTER para volver al menú...")
 
 menu_principal()
